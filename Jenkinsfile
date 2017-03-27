@@ -70,9 +70,9 @@ if (testModuleSeperated) {
     echo 'No Test Modules found , hence it is assumed that no test environment and / or test cases to be performed'
     testPath = ''
 }
-  if (appPath + fileExists('${filename}')) {
+  if (appPath + fileExists("${FileName}")) {
     echo 'This application contains a single packer file , it is assumed to be developed in compiler in-dependant / interpreter based programming language.'
-    distPackerFile = appPath + 'packer.json'
+    distPackerFile = appPath + "${FileName}"
 } else {
     echo 'Packerfile not found under ' + appPath
   }
