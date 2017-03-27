@@ -18,9 +18,6 @@ Modified by           : PRAVEEN KUMAR KRISHNAMOORTHY
 Description of change : Forked From Existing Pipeline Script
  
 ***********************************************************************/
-
-def TempDocker = 'ec2-13-55-19-58.ap-southeast-2.compute.amazonaws.com'
-def permDocker = 'ec2-13-54-206-33.ap-southeast-2.compute.amazonaws.com'
 node {
     def passstr = scmPassword
     //To escape all Special Charecters in a given input string password
@@ -73,18 +70,11 @@ if (testModuleSeperated) {
     echo 'No Test Modules found , hence it is assumed that no test environment and / or test cases to be performed'
     testPath = ''
 }
-def isBuildAndPackageRequired = true
-def buildDockerFile = appPath + 'Dockerfile.build'
-def distDockerFile = appPath + 'Dockerfile.dist'
-if (fileExists(buildDockerFile) && fileExists(distDockerFile)) {
-    echo 'Looks like this application contains seperate Build and Distribution Docker Files , its assumed to be developed in compiler dependant programming language.'
-    isBuildAndPackageRequired = true;    
-} else if (appPath + fileExists('Dockerfile')) {
-    echo 'This application contains a single docker file , it is assumed to be developed in compiler in-dependant / interpreter based programming language.'
-    isBuildAndPackageRequired = false;
-    distDockerFile = appPath + 'Dockerfile'
+  if (appPath + fileExists('${filename}')) {
+    echo 'This application contains a single packer file , it is assumed to be developed in compiler in-dependant / interpreter based programming language.'
+    distPackerFile = appPath + 'packer.json'
 } else {
-    echo 'Dockerfile not found under ' + appPath
+    echo 'Packerfile not found under ' + appPath
   }
 // COPYING APP Directory to Current Working Directory
   def appWorkingDir = (appPath=='') ? '.' : appPath.substring(0, appPath.length()-1)  
@@ -93,74 +83,26 @@ if (fileExists(buildDockerFile) && fileExists(distDockerFile)) {
 //END OF INITIALIZING.
 //_______________________________________________________________________________________________________________________________________________________________________  
 //BUILD & PACKING
-if(isBuildAndPackageRequired){
-    echo 'Compile and Packaging runs as separate entities , it is inferred that the App package is compiler dependant.'
-    stage('Compile, Unit Test & Package') {
-      echo 'Working Directory for Docker Build file: ' + appWorkingDir
-      echo "Build Tag Name: ${dockerRepo}/${dockerImageName}-build:${env.BUILD_NUMBER}"
-      echo "Build params: --file ${buildDockerFile} ${appWorkingDir}"
-      
-      appCompileAndPackageImg = docker.build("${dockerRepo}/${dockerImageName}-build:${env.BUILD_NUMBER}", "--file ${buildDockerFile} ${appWorkingDir}")      
-      
-def dockerCMD = readFile buildDockerFile
-echo dockerCMD.substring(dockerCMD.indexOf('CMD')+3, dockerCMD.length())      
-appCompileAndPackageImg.inside('--net=host') {        
-sh dockerCMD.substring(dockerCMD.indexOf('CMD')+3, dockerCMD.length())
-}
-}
-} else {
-echo 'Compile and Package are not seperate steps , it is inferred that the package is not compiler dependant'
-}
   //---------------------------------------
-  def pcImg
-  if("${stage}".toUpperCase() == 'BUILD') {
-    echo 'It is inferred that the package is a Build only application , hence it is moved to a temporary repository'
-    docker.withRegistry("http://${TempDocker}/", 'docker-registry-login') {
-      stage('Dockerization & Stage') {
-        pcImg = docker.build("${dockerRepo}/${dockerImageName}:${env.BUILD_NUMBER}", "--file ${distDockerFile} ${appWorkingDir}")
-        pcImg.push();
-      }
-    }   
-  } else if ("${stage}".toUpperCase() == 'DEPLOY') {
-    echo 'It is inferred that the package is a deploy only application , hence it has to be moved to a permanent repository'
-    docker.withRegistry("https://${permDocker}/", 'docker-registry-login') {
-      stage('Dockerization & Publish') {
-        pcImg = docker.build("${dockerRepo}/${dockerImageName}:${env.BUILD_NUMBER}", "--file ${distDockerFile} ${appWorkingDir}")
-        pcImg.push('latest');
-      }
-    }    
-  } else if ("${stage}".toUpperCase() == 'CERTIFY'){
-    echo 'It is inferred that the package is a certify only application , hence it has to be moved to a provisioned with a runtime sandbox environment and push it to temporary repository'
-    docker.withRegistry("http://${TempDocker}/", 'docker-registry-login') {
-      stage('Certify') {
-        pcImg = docker.build("${dockerRepo}/${dockerImageName}:${env.BUILD_NUMBER}", "--file ${distDockerFile} ${appWorkingDir}")
-        pcImg.push('SNAPSHOT');
-      }
-    }   
+  if("${stage}".toUpperCase() == 'VALIDATE') {
+    echo "Running packer validate on : ${distPackerfile}"
+    sh "packer -v ; packer validate ${distPackerfile}"
+  
   }
-
-  stage ('Execute'){
-      
-     if ("${SourceType}".toUpperCase() == 'PYTHON') {
-    pcImg.inside() {
-            sh 'easy_install unittest-xml-reporting'
-            sh "${SourceType} ${TargetFile}"
-//            sh "${SourceType} --junitxml results.xml ${TargetFile}"
-    }
-}
-
-    else if ("${SourceType}".toUpperCase() == 'MAVEN') {
-    pcImg.inside() {
-//        sh 'apt-get install mvn'
-//        sh 'mvn -version'
-//        sh 'mvn clean install'
-//        sh 'mvn compile'
-//          sh 'mvn clean package'
-//          sh 'java -cp target/*.jar src.main.java.org.aricent.fruits.FruitMain'
-//          sh 'java target/*.jar org.aricent.fruits.FruitMain'
-          sh 'java target/*.jar FruitMain'
-    }
-}
+  if("${stage}".toUpperCase() == 'BUILD') {
+    echo 'It is inferred that the package is a Build application , hence it has to be validated , built and moved to a temporary repository'
+      stage('BUILD') {
+        echo "Running packer validate on : ${distPackerfile}"
+        sh "packer -v ; packer validate ${distPackerfile}"
+        sh "packer build ${distPackerfile}"
+    }   
+  }  else if ("${stage}".toUpperCase() == 'TEST'){
+    echo 'It is inferred that the package is a test application , hence it has to be moved to a provisioned with a runtime sandbox environment , validate , build and tested before pushing into repo'
+        stage('TEST') {
+        echo "Running packer validate on : ${distPackerfile}"
+        sh "packer -v ; packer validate ${distPackerfile}"
+        sh "packer build ${distPackerfile}"
+      }   
   }
 
 //END OF IMAGE PUSHING INTO REPOSITORY
