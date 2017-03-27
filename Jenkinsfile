@@ -23,6 +23,8 @@ node {
   scmPassword = pwdstr2.replaceAll( /([@])/, '%40' )
   scmUsername = usrstr2.replaceAll( /([@])/, '%40' ) 
   //----------------------------------------
+  
+  sh "ssh "
 
   stage('Code Pickup') {
     echo "Source Code Repository Type : ${scmSourceRepo}"
@@ -46,6 +48,7 @@ node {
             sh 'ls -a | xargs rm -fr'
         } catch (error) {
         }
+        sh ' sshpass -p 'abc123' ssh ubuntu@172.19.74.170'
       
         if(scmPath.startsWith("ssh://")){
           if(httpsProxy != null && httpProxy!=null && httpsProxy.length()>0 && httpProxy.length()>0){
