@@ -5,26 +5,34 @@ This source code is the sole property of Aricent Technologies. Any form of utili
 of this source code in whole or in part is  prohibited without  written consent from
 Aricent Technologies
  
-File Name			  :Jenkinsfile
-Principal Author	  :PRAVEEN KUMAR KRISHNAMOORTHY
-Subsystem Name        :Jenkins Pipeline Study
+File Name			        : Jenkinsfile
+Principal Author	    : PRAVEEN KUMAR KRISHNAMOORTHY
+Subsystem Name        : Packer Workflow Code
 Module Name           :
-Date of First Release : Feb 25, 2017
-Author                :PRAVEEN KUMAR KRISHNAMOORTHY
-Description           :This is a sample program to study Continous Integration
-Version               :1.0
-Date(DD/MM/YYYY)      :Feb 25, 2017
+Date of First Release : Mar 27, 2017
+Author                : PRAVEEN KUMAR KRISHNAMOORTHY
+Description           : This is a sample program to study Continous Integration
+Version               : 1.0
+Date(DD/MM/YYYY)      : Mar 27, 2017
 Modified by           : PRAVEEN KUMAR KRISHNAMOORTHY
-Description of change :Forked From Existing Pipeline Script
+Description of change : Forked From Existing Pipeline Script
  
 ***********************************************************************/
 
 def TempDocker = 'ec2-13-55-19-58.ap-southeast-2.compute.amazonaws.com'
 def permDocker = 'ec2-13-54-206-33.ap-southeast-2.compute.amazonaws.com'
 node {
-    def str = scmPassword
+    def passstr = scmPassword
     //To escape all Special Charecters in a given input string password
-    scmPassword = str.replaceAll( /([^a-zA-Z0-9])/, '\\\\$1' )
+    passstr = passstr.replaceAll( /([^a-zA-Z0-9])/, '\\\\$1' )
+    scmPassword = passstr.replaceAll( /([@])/, '%40' )
+  
+    def userstr = scmUsername
+    //To escape all Special Charecters in a given input string Username
+    userstr = userstr.replaceAll( /([^a-zA-Z0-9])/, '\\\\$1' )
+    scmUsername = userstr.replaceAll( /([@])/, '%40' )
+  
+  
     stage('Code Pickup') {
     echo "Source Code Repository Type : ${CodeType}"
     echo "Source Code Repository Path : ${CodeLoc}"
